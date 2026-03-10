@@ -1,11 +1,11 @@
 streamlit
-pypdf
+pypdf==4.0.0
 langchain
-langchain-community
-langchain-google-genai
+langchain-community==0.3.0
+langchain-google-genai==2.0.1
 langchain-text-splitters
 langchain-classic
-langchain-core
+langchain-core==0.3.0
 google-genai
-faiss-cpu
+faiss-cpu==1.8.0
 python-dotenv
