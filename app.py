@@ -11,7 +11,7 @@ from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
 
 load_dotenv()
-#GOOGLE_API_KEY ="AIzaSyCUzb4LzJAszKagNblMsvj04c1CyQbEZng"
+GOOGLE_API_KEY ="AIzaSyCUzb4LzJAszKagNblMsvj04c1CyQbEZng"
 client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
 # read all pdf files and return text
 
@@ -36,10 +36,13 @@ def get_text_chunks(text):
 # get embeddings for each chunk
 
 
-def get_vector_store(chunks):
+def get_vector_store(text_chunks):
+    # Explicitly pass the API key from Streamlit Secrets
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001")  # type: ignore
-    vector_store = FAISS.from_texts(chunks, embedding=embeddings)
+        model="models/embedding-001", 
+        google_api_key=st.secrets["GOOGLE_API_KEY"]
+    )
+    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("faiss_index")
 
 
