@@ -11,7 +11,6 @@ from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
 
 load_dotenv()
-GOOGLE_API_KEY ="AIzaSyCUzb4LzJAszKagNblMsvj04c1CyQbEZng"
 client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
 # read all pdf files and return text
 
@@ -37,7 +36,7 @@ def get_text_chunks(text):
 
 
 def get_vector_store(text_chunks):
-    # Explicitly pass the API key from Streamlit Secrets
+    # Pass the key directly from Streamlit's secrets
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/embedding-001", 
         google_api_key=st.secrets["GOOGLE_API_KEY"]
@@ -56,10 +55,11 @@ def get_conversational_chain():
     Answer:
     """
 
-    model = ChatGoogleGenerativeAI(model="gemini-pro",
-                                   client=genai,
-                                   temperature=0.3,
-                                   )
+    model = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash", 
+        google_api_key=st.secrets["GOOGLE_API_KEY"],
+        temperature=0.3
+    )
     prompt = PromptTemplate(template=prompt_template,
                             input_variables=["context", "question"])
     chain = load_qa_chain(llm=model, chain_type="stuff", prompt=prompt)
@@ -73,9 +73,9 @@ def clear_chat_history():
 
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001")  # type: ignore
+        model="models/embedding-001", google_api_key=st.secrets["GOOGLE_API_KEY"])  # type: ignore
 
-    new_db = FAISS.load_local("faiss_index", embeddings)
+    new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
     docs = new_db.similarity_search(user_question)
 
     chain = get_conversational_chain()
