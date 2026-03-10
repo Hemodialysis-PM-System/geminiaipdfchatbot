@@ -131,12 +131,10 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 response = user_input(prompt)
-                placeholder = st.empty()
-                full_response = ''
-                for item in response['output_text']:
-                    full_response += item
-                    placeholder.markdown(full_response)
-                placeholder.markdown(full_response)
+                # In 2026 LangChain, the 'output_text' key contains the full string.
+                # No need to loop over characters; just display it.
+                full_response = response.get('output_text', "No answer found.")
+                st.markdown(full_response)
         if response is not None:
             message = {"role": "assistant", "content": full_response}
             st.session_state.messages.append(message)
