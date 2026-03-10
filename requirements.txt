@@ -5,6 +5,7 @@ langchain-community
 langchain-google-genai
 langchain-text-splitters
 langchain-classic
+langchain-core
 google-genai
 faiss-cpu
 python-dotenv
