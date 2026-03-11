@@ -54,7 +54,7 @@ def get_conversational_chain():
     """
 
     model = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash", 
+        model="gemini-2.0-flash", 
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         temperature=0.3
     )
@@ -77,7 +77,7 @@ def user_input(user_question):
     )  # type: ignore
 
     new_db = FAISS.load_local("/tmp/faiss_index", embeddings, allow_dangerous_deserialization=True)
-    docs = new_db.similarity_search(user_question)
+    docs = new_db.similarity_search(user_question, k=2)
 
     chain = get_conversational_chain()
 
