@@ -74,7 +74,7 @@ def clear_chat_history():
 
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/text-embedding-004",
+        model="models/gemini-embedding-001",
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         task_type="retrieval_query"
     )  # type: ignore
