@@ -26,7 +26,7 @@ def get_pdf_text(pdf_docs):
 # split text into chunks
 def get_text_chunks(text):
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=10000, chunk_overlap=1000)
+        chunk_size=1000, chunk_overlap=200)
     chunks = splitter.split_text(text)
     return chunks  # list of strings
 
@@ -54,7 +54,7 @@ def get_conversational_chain():
     """
 
     model = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash", 
+        model="gemini-1.5-flash", 
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         temperature=0.3
     )
