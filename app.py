@@ -81,10 +81,15 @@ def user_input(user_question):
 
     chain = get_conversational_chain()
 
-    response = chain(
-        {"input_documents": docs, "question": user_question}, return_only_outputs=True, )
+   try:
+        response = chain(
+            {"input_documents": docs, "question": user_question},
+            return_only_outputs=True,
+        )
+    except Exception as e:
+        st.error(f"Gemini API error: {e}")
+        return {"output_text": "API quota exceeded or configuration issue."}
 
-    # print(response)
     return response
 
 
