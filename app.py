@@ -76,19 +76,27 @@ def user_input(user_question):
         task_type="retrieval_query"
     )  # type: ignore
 
-    new_db = FAISS.load_local("/tmp/faiss_index", embeddings, allow_dangerous_deserialization=True)
-    docs = new_db.similarity_search(user_question, k=2)
+    # 2. Load the vector database from the Streamlit /tmp/ directory
+    try:
+        new_db = FAISS.load_local("/tmp/faiss_index", embeddings, allow_dangerous_deserialization=True)
+        # Limit to 2 docs to stay within Free Tier token limits
+        docs = new_db.similarity_search(user_question, k=2)
+    except Exception as e:
+        st.error(f"Vector Database Error: {e}")
+        return {"output_text": "Please upload and process a PDF first."}
 
+    # 3. Get the chain and attempt to generate a response
     chain = get_conversational_chain()
 
-   try:
+    try:
         response = chain(
-            {"input_documents": docs, "question": user_question},
-            return_only_outputs=True,
+            {"input_documents": docs, "question": user_question}, 
+            return_only_outputs=True
         )
     except Exception as e:
+        # This catches the 'RESOURCE_EXHAUSTED' or 'Redacted' errors
         st.error(f"Gemini API error: {e}")
-        return {"output_text": "API quota exceeded or configuration issue."}
+        return {"output_text": "The API is currently busy or the quota was exceeded. Please wait 60 seconds."}
 
     return response
 
