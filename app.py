@@ -35,7 +35,7 @@ def get_text_chunks(text):
 def get_vector_store(text_chunks):
     # Pass the key directly from Streamlit's secrets
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001", 
+        model="models/gemini-embedding-001", 
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         task_type="retrieval_document"
     )
@@ -54,7 +54,7 @@ def get_conversational_chain():
     """
 
     model = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash", 
+        model="gemini-2.0-flash", 
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         temperature=0.3
     )
@@ -71,7 +71,7 @@ def clear_chat_history():
 
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001",
+        model="models/gemini-embedding-001",
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         task_type="retrieval_query"
     )  # type: ignore
