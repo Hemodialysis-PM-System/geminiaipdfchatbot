@@ -11,7 +11,7 @@ from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
 
 load_dotenv()
-client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
+# client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
 # read all pdf files and return text
 
 
@@ -38,7 +38,7 @@ def get_text_chunks(text):
 def get_vector_store(text_chunks):
     # Pass the key directly from Streamlit's secrets
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/text-embedding-004", 
+        model="models/gemini-embedding-001", 
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         task_type="retrieval_document"
     )
