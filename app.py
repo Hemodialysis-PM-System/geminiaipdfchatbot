@@ -11,10 +11,9 @@ from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
 
 load_dotenv()
-# client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
+
+
 # read all pdf files and return text
-
-
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
@@ -23,22 +22,20 @@ def get_pdf_text(pdf_docs):
             text += page.extract_text()
     return text
 
+
 # split text into chunks
-
-
 def get_text_chunks(text):
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=10000, chunk_overlap=1000)
     chunks = splitter.split_text(text)
     return chunks  # list of strings
 
+
 # get embeddings for each chunk
-
-
 def get_vector_store(text_chunks):
     # Pass the key directly from Streamlit's secrets
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/gemini-embedding-001", 
+        model="models/embedding-001", 
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         task_type="retrieval_document"
     )
@@ -74,7 +71,7 @@ def clear_chat_history():
 
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/gemini-embedding-001",
+        model="models/embedding-001",
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         task_type="retrieval_query"
     )  # type: ignore
@@ -87,7 +84,7 @@ def user_input(user_question):
     response = chain(
         {"input_documents": docs, "question": user_question}, return_only_outputs=True, )
 
-    print(response)
+    # print(response)
     return response
 
 
@@ -136,8 +133,6 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 response = user_input(prompt)
-                # In 2026 LangChain, the 'output_text' key contains the full string.
-                # No need to loop over characters; just display it.
                 full_response = response.get('output_text', "No answer found.")
                 st.markdown(full_response)
         if response is not None:
