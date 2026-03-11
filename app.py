@@ -9,6 +9,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_classic.chains.question_answering import load_qa_chain
 from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
@@ -54,7 +55,7 @@ def get_conversational_chain():
     """
 
     model = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash", 
+        model="gemini-2.5-flash", 
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         temperature=0.3
     )
@@ -94,9 +95,13 @@ def user_input(user_question):
             return_only_outputs=True
         )
     except Exception as e:
-        # This catches the 'RESOURCE_EXHAUSTED' or 'Redacted' errors
-        st.error(f"Gemini API error: {e}")
-        return {"output_text": "The API is currently busy or the quota was exceeded. Please wait 60 seconds."}
+        if "429" in str(e):
+            st.warning("Rate limit hit. Retrying in 15 seconds...")
+            time.sleep(15) # Wait for the quota to reset
+            return user_input(user_question) # Optional: automatic retry
+        else:
+            st.error(f"Gemini API error: {e}")
+            return {"output_text": "An error occurred."}
 
     return response
 
