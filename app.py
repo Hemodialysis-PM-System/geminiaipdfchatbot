@@ -40,7 +40,19 @@ def get_vector_store(text_chunks):
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         task_type="retrieval_document"
     )
-    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+    batch_size = 5 
+    for i in range(0, len(text_chunks), batch_size):
+        batch = text_chunks[i:i + batch_size]
+        try:
+            if i == 0:
+                vector_store = FAISS.from_texts(batch, embedding=embeddings)
+            else:
+                vector_store.add_texts(batch)
+            # Small pause between batches to respect the 2026 Rate Limits
+            time.sleep(2) 
+        except Exception as e:
+            st.error(f"Quota hit at chunk {i}. Please wait a moment...")
+            time.sleep(15) # Wait for the token bucket to refill
     vector_store.save_local("/tmp/faiss_index")
 
 
