@@ -117,51 +117,69 @@ def user_input(user_question):
 
     return response
 
+def auto_ingest_data():
+    """Checks for the /data folder and processes PDFs automatically."""
+    data_dir = "data"
+    index_path = "/tmp/faiss_index"
+
+    # Only process if the vector index doesn't already exist in the temporary folder
+    if not os.path.exists(index_path):
+        if not os.path.exists(data_dir):
+            st.error(f"Folder '{data_dir}' not found. Please create it and add your PDFs.")
+            return
+
+        # Identify all PDF files in the folder
+        pdf_files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.pdf')]
+        
+        if pdf_files:
+            with st.spinner("🚀 System is auto-loading troubleshooting manuals..."):
+                raw_text = get_pdf_text(pdf_files)
+                text_chunks = get_text_chunks(raw_text)
+                get_vector_store(text_chunks)
+                st.toast("Manuals loaded automatically!", icon="✅")
+        else:
+            st.warning("No PDFs found in the /data folder.")
 
 def main():
     st.set_page_config(
-        page_title="Google Gemini Pro PDF Chatbot",
-        page_icon="🐬"
+        page_title="HoloLens PDF Assistant",
+        page_icon="🏥"
     )
 
-    # Sidebar for uploading PDF files
+    # --- EDIT 1: Run the auto-loader immediately ---
+    auto_ingest_data()
+
+    # --- EDIT 2: Simplified Sidebar ---
     with st.sidebar:
-        st.title("Menu:")
-        pdf_docs = st.file_uploader(
-            "Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
-        if st.button("Submit & Process"):
-            with st.spinner("Processing..."):
-                client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
-                raw_text = get_pdf_text(pdf_docs)
-                text_chunks = get_text_chunks(raw_text)
-                get_vector_store(text_chunks)
-                st.success("Done")
+        st.title("System Status")
+        st.success("Manuals: Pre-loaded")
+        # Keep the clear history button for testing
+        if st.sidebar.button('Clear Chat History'):
+            clear_chat_history()
+            st.rerun()
 
-    # Main content area for displaying chat messages
-    st.title("Chat with PDF files using Gemini🐬")
-    st.write("Welcome to the chat!")
-    st.sidebar.button('Clear Chat History', on_click=clear_chat_history)
+    # Main content area
+    st.title("Biomedical Troubleshooting AI 🏥")
+    st.write("System ready for HoloLens troubleshooting.")
 
-    # Chat input
-    # Placeholder for chat messages
-
+    # --- EDIT 3: Update Initial Message ---
     if "messages" not in st.session_state.keys():
         st.session_state.messages = [
-            {"role": "assistant", "content": "upload some pdfs and ask me a question"}]
+            {"role": "assistant", "content": "I have loaded the dialysis manuals. How can I help you troubleshoot?"}]
 
+    # (Keep your existing chat display and input logic below)
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.write(message["content"])
 
-    if prompt := st.chat_input():
+    if prompt := st.chat_input("Ask a troubleshooting question..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.write(prompt)
 
-    # Display chat messages and bot response
     if st.session_state.messages[-1]["role"] != "assistant":
         with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
+            with st.spinner("Searching manuals..."):
                 response = user_input(prompt)
                 full_response = response.get('output_text', "No answer found.")
                 st.markdown(full_response)
