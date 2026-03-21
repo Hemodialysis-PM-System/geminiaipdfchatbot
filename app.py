@@ -14,22 +14,35 @@ import time
 load_dotenv()
 
 
-# read all pdf files and return text
+from langchain.docstore.document import Document
+
 def get_pdf_text(pdf_docs):
-    text = ""
-    for pdf in pdf_docs:
-        pdf_reader = PdfReader(pdf)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-    return text
+    documents = []
+    for pdf_path in pdf_docs:
+        # Extract the actual filename (e.g., "manual1.pdf")
+        file_name = os.path.basename(pdf_path) 
+        pdf_reader = PdfReader(pdf_path)
+        
+        for i, page in enumerate(pdf_reader.pages):
+            text = page.extract_text()
+            if text:
+                # We store the text AND the source/page information here
+                documents.append(Document(
+                    page_content=text, 
+                    metadata={"source": file_name, "page": i + 1}
+                ))
+    return documents
 
 
 # split text into chunks
-def get_text_chunks(text):
+def get_text_chunks(documents):
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000, chunk_overlap=100)
-    chunks = splitter.split_text(text)
-    return chunks  # list of strings
+        chunk_size=1000, 
+        chunk_overlap=100
+    )
+    # Change 'split_text' to 'split_documents' to keep the metadata
+    chunks = splitter.split_documents(documents)
+    return chunks
 
 
 # get embeddings for each chunk
@@ -40,30 +53,39 @@ def get_vector_store(text_chunks):
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         task_type="retrieval_document"
     )
-    batch_size = 5 
+    # Process in larger batches of 50 for much faster speed
+    batch_size = 50 
+    vector_store = None
+    
     for i in range(0, len(text_chunks), batch_size):
         batch = text_chunks[i:i + batch_size]
         try:
-            if i == 0:
-                vector_store = FAISS.from_texts(batch, embedding=embeddings)
+            if vector_store is None:
+                vector_store = FAISS.from_documents(batch, embedding=embeddings)
             else:
-                vector_store.add_texts(batch)
-            # Small pause between batches to respect the 2026 Rate Limits
-            time.sleep(2) 
+                vector_store.add_documents(batch)
+            # Reduced sleep time for better speed
+            time.sleep(1) 
         except Exception as e:
-            st.error(f"Quota hit at chunk {i}. Please wait a moment...")
-            time.sleep(15) # Wait for the token bucket to refill
+            st.error(f"Quota reached. Waiting 10 seconds...")
+            time.sleep(10)
+            
     vector_store.save_local("/tmp/faiss_index")
 
 
 def get_conversational_chain():
     prompt_template = """
-    Answer the question as detailed as possible from the provided context, make sure to provide all the details, if the answer is not in
-    provided context just say, "answer is not available in the context", don't provide the wrong answer\n\n
+    Answer the question as detailed as possible from the provided context.
+    
+    CRITICAL INSTRUCTION: You must state the Source PDF name and Page Number for your answer.
+    Example: "According to Manual_A.pdf (Page 12), you should check the pump..."
+    
+    If the answer is not in the context, say "Answer is not available in the context."
+    
     Context:\n {context}?\n
     Question: \n{question}\n
 
-    Answer:
+    Answer (Include Source and Page):
     """
 
     model = ChatGoogleGenerativeAI(
@@ -93,7 +115,7 @@ def user_input(user_question):
     try:
         new_db = FAISS.load_local("/tmp/faiss_index", embeddings, allow_dangerous_deserialization=True)
         # Limit to 2 docs to stay within Free Tier token limits
-        docs = new_db.similarity_search(user_question, k=2)
+        docs = new_db.similarity_search(user_question, k=5)
     except Exception as e:
         st.error(f"Vector Database Error: {e}")
         return {"output_text": "Please upload and process a PDF first."}
