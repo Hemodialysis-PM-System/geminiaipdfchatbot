@@ -14,24 +14,26 @@ import time
 load_dotenv()
 
 
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
+
+# Import at the top: from langchain_core.documents import Document
 
 def get_pdf_text(pdf_docs):
     documents = []
     for pdf_path in pdf_docs:
-        # Extract the actual filename (e.g., "manual1.pdf")
+        # Get the filename (e.g., manual1.pdf) for citations
         file_name = os.path.basename(pdf_path) 
         pdf_reader = PdfReader(pdf_path)
         
         for i, page in enumerate(pdf_reader.pages):
             text = page.extract_text()
             if text:
-                # We store the text AND the source/page information here
+                # We store the text AND the metadata (source and page)
                 documents.append(Document(
                     page_content=text, 
                     metadata={"source": file_name, "page": i + 1}
                 ))
-    return documents
+    return documents # Returns a list of Document objects, not just text
 
 
 # split text into chunks
