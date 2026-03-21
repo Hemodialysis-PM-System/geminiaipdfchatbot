@@ -21,19 +21,20 @@ from langchain_core.documents import Document
 def get_pdf_text(pdf_docs):
     documents = []
     for pdf_path in pdf_docs:
-        # Get the filename (e.g., manual1.pdf) for citations
+        # This gets the actual filename (e.g., Fresenius 5008 Service manual.pdf)
         file_name = os.path.basename(pdf_path) 
         pdf_reader = PdfReader(pdf_path)
         
         for i, page in enumerate(pdf_reader.pages):
-            text = page.extract_text()
-            if text:
-                # We store the text AND the metadata (source and page)
-                documents.append(Document(
-                    page_content=text, 
+            page_text = page.extract_text()
+            if page_text:
+                # We save the text AND the real page number (i + 1)
+                new_doc = Document(
+                    page_content=page_text,
                     metadata={"source": file_name, "page": i + 1}
-                ))
-    return documents # Returns a list of Document objects, not just text
+                )
+                documents.append(new_doc)
+    return documents
 
 
 # split text into chunks
@@ -77,16 +78,14 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    Answer the question as detailed as possible from the provided context.
+    Answer the question as accurately as possible using the provided context.
     
-    CRITICAL INSTRUCTION: You must state the Source PDF name and Page Number for your answer.
-    Example: "According to Manual_A.pdf (Page 12), you should check the pump..."
-    
-    If the answer is not in the context, say "Answer is not available in the context."
+    CRITICAL REQUIREMENT: For every point in your answer, you MUST state the Source PDF name and the Page Number.
+    Example: "Check PT07 temperature (Source: Fresenius 5008 Service manual.pdf, Page 45)"
     
     Context:\n {context}?\n
     Question: \n{question}\n
-
+    
     Answer (Include Source and Page):
     """
 
