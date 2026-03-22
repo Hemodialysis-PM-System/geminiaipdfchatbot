@@ -176,46 +176,53 @@ def main():
         page_icon="🏥"
     )
 
-    # --- EDIT 1: Run the auto-loader immediately ---
+    # 1. INITIALIZE HISTORY (Must be at the very top of main)
+    # This prevents the history from disappearing on refresh
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {"role": "assistant", "content": "I have loaded the dialysis manuals. How can I help you troubleshoot?"}
+        ]
+
+    # 2. RUN AUTO-LOADER
     auto_ingest_data()
 
-    # --- EDIT 2: Simplified Sidebar ---
+    # Sidebar
     with st.sidebar:
         st.title("System Status")
         st.success("Manuals: Pre-loaded")
-        # Keep the clear history button for testing
-        if st.sidebar.button('Clear Chat History'):
-            clear_chat_history()
+        if st.button('Clear Chat History'):
+            # This clears the session state correctly
+            st.session_state.messages = [
+                {"role": "assistant", "content": "Chat cleared. How can I help?"}
+            ]
             st.rerun()
 
-    # Main content area
     st.title("Biomedical Troubleshooting AI 🏥")
     st.write("System ready for HoloLens troubleshooting.")
 
-    # --- EDIT 3: Update Initial Message ---
-    if "messages" not in st.session_state.keys():
-        st.session_state.messages = [
-            {"role": "assistant", "content": "I have loaded the dialysis manuals. How can I help you troubleshoot?"}]
-
-    # (Keep your existing chat display and input logic below)
+    # 3. DISPLAY CHAT HISTORY
+    # We loop through the session_state every time the page refreshes
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            st.write(message["content"])
+            st.markdown(message["content"])
 
+    # 4. CHAT INPUT & RESPONSE LOGIC
     if prompt := st.chat_input("Ask a troubleshooting question..."):
+        # Save and display user message
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
-            st.write(prompt)
+            st.markdown(prompt)
 
-    if st.session_state.messages[-1]["role"] != "assistant":
+        # Generate and save assistant message
         with st.chat_message("assistant"):
             with st.spinner("Searching manuals..."):
+                # user_input now uses the k=5 and metadata logic we discussed
                 response = user_input(prompt)
                 full_response = response.get('output_text', "No answer found.")
                 st.markdown(full_response)
-        if response is not None:
-            message = {"role": "assistant", "content": full_response}
-            st.session_state.messages.append(message)
+        
+        # SAVE THE RESPONSE to history so it survives a refresh
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
 
 
 if __name__ == "__main__":
