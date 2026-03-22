@@ -158,7 +158,7 @@ def user_input(user_question):
     return response
     
 def auto_ingest_data():
-    """Checks for the /data folder and processes PDFs automatically."""
+    # Checks for the /data folder and processes PDFs automatically.
     data_dir = "data"
     index_path = "/tmp/faiss_index"
 
