@@ -79,21 +79,25 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    You are a Biomedical Engineering expert troubleshooting a Fresenius 5008 Hemodialysis unit.
-    Use the provided context to answer the question.
+    prompt_template = """
+    You are a Senior Biomedical Engineer. Use the provided context to answer the troubleshooting question.
     
-    STRICT RULE FOR CITATIONS:
-    State the Source Filename and the DIGITAL_PAGE for every instruction.
-    
-    DO NOT use chapter-style page numbers (like 6-6 or 4-2) found in the text. ONLY use the 'DIGITAL_PAGE' label provided in the context.
+    CRITICAL HIERARCHY RULES:
+    1. PRIMARY SOURCES: 'Fresenius 5008 Service manual.pdf' and 'PM Form_Haemodialysis Unit_FMC-5008_2025.pdf'. Use these for technical steps and maintenance.
+    2. SECONDARY SOURCE: 'Fresenius 5008 User manual.pdf'. Use this ONLY for general operation or if the answer is missing from the Service Manual.
+    3. If there is a conflict, the Service Manual is ALWAYS correct.
 
+    INSTRUCTIONS FOR CITATIONS:
+    - At the end of every answer, clearly list the source file name and the Digital Page number.
+    - Use the 'DIGITAL_PAGE' label found at the top of the context snippets.                                                                                                                  
+                                                                                                                    
     Context:
     {context}
 
     Question: 
     {question}
 
-    Answer:
+    Answer (Include Filename and Digital Page):
     """
 
     model = ChatGoogleGenerativeAI(
@@ -122,16 +126,22 @@ def user_input(user_question):
     # 2. Load the vector database from the Streamlit /tmp/ directory
     try:
         new_db = FAISS.load_local("/tmp/faiss_index", embeddings, allow_dangerous_deserialization=True)
-        # Limit to 2 docs to stay within Free Tier token limits
-        docs = new_db.similarity_search(user_question, k=8)
+        
+        # --- NEW: WEIGHTED SEARCH ---
+        # We add priority terms to the search to favor the Service Manual and PM Form
+        priority_terms = "Technical Safety Check TSC Maintenance Procedure Service Manual PM Form"
+        enhanced_query = f"{priority_terms} {user_question}"
+        
+        # Increased k to 10 so we capture snippets from all 3 PDFs
+        docs = new_db.similarity_search(enhanced_query, k=10) 
     except Exception as e:
         st.error(f"Vector Database Error: {e}")
-        return {"output_text": "Please upload and process a PDF first."}
+        return {"output_text": "System not ready. Please wait for auto-load to finish."}
 
-    # 3. Get the chain and attempt to generate a response
     chain = get_conversational_chain()
 
     try:
+        # Pass the docs and the original question to the chain
         response = chain(
             {"input_documents": docs, "question": user_question}, 
             return_only_outputs=True
@@ -139,14 +149,14 @@ def user_input(user_question):
     except Exception as e:
         if "429" in str(e):
             st.warning("Rate limit hit. Retrying in 15 seconds...")
-            time.sleep(15) # Wait for the quota to reset
-            return user_input(user_question) # Optional: automatic retry
+            time.sleep(15)
+            return user_input(user_question)
         else:
             st.error(f"Gemini API error: {e}")
             return {"output_text": "An error occurred."}
 
     return response
-
+    
 def auto_ingest_data():
     """Checks for the /data folder and processes PDFs automatically."""
     data_dir = "data"
