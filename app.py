@@ -27,11 +27,12 @@ def get_pdf_text(pdf_docs):
         for i, page in enumerate(pdf_reader.pages):
             page_text = page.extract_text()
             if page_text:
-                # ADD THIS LINE: Explicitly label the digital page inside the text
-                labeled_text = f"SOURCE_FILE: {file_name} | DIGITAL_PAGE: {i + 1}\n{page_text}"
+                # CRITICAL CHANGE: We put the Digital Page at the very top of the text
+                # This makes it impossible for the AI to miss it.
+                labeled_content = f"FILE: {file_name} | ACTUAL_DIGITAL_PAGE: {i + 1}\n{page_text}"
                 
                 new_doc = Document(
-                    page_content=labeled_text,
+                    page_content=labeled_content,
                     metadata={"source": file_name, "page": i + 1}
                 )
                 documents.append(new_doc)
@@ -85,6 +86,9 @@ def get_conversational_chain():
     1. PRIMARY SOURCES: 'Fresenius 5008 Service manual.pdf' and 'PM Form_Haemodialysis Unit_FMC-5008_2025.pdf'. Use these for technical steps and maintenance.
     2. SECONDARY SOURCE: 'Fresenius 5008 User manual.pdf'. Use this ONLY for general operation or if the answer is missing from the Service Manual.
     3. If there is a conflict, the Service Manual is ALWAYS correct.
+    4. Only use the 'ACTUAL_DIGITAL_PAGE' number provided at the top of each context block.
+    5. DO NOT use numbers like '6-3', '4-2', or '6-11' as page numbers. Those are chapter headers.
+    6. Format your citation exactly like this: [Filename | Digital Page: X;]
 
     INSTRUCTIONS FOR CITATIONS:
     - At the end of every answer, clearly list the source file name and the Digital Page number.
@@ -188,7 +192,7 @@ def main():
     # This prevents the history from disappearing on refresh
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "I have loaded the dialysis manuals. How can I help you troubleshoot?"}
+            {"role": "assistant", "content": "I have loaded the manuals. How can I help you troubleshoot?"}
         ]
 
     # 2. RUN AUTO-LOADER
