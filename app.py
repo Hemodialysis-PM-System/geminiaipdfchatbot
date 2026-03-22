@@ -79,7 +79,6 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    prompt_template = """
     You are a Senior Biomedical Engineer. Use the provided context to answer the troubleshooting question.
     
     CRITICAL HIERARCHY RULES:
