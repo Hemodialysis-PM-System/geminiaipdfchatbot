@@ -162,21 +162,20 @@ def auto_ingest_data():
     data_dir = "data"
     index_path = "/tmp/faiss_index"
 
-    # Only process if the vector index doesn't already exist in the temporary folder
     if not os.path.exists(index_path):
         if not os.path.exists(data_dir):
-            st.error(f"Folder '{data_dir}' not found. Please create it and add your PDFs.")
+            st.error(f"Folder '{data_dir}' not found. Please create it in your GitHub repo.")
             return
 
-        # Identify all PDF files in the folder
         pdf_files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.pdf')]
         
         if pdf_files:
-            with st.spinner("🚀 System is auto-loading troubleshooting manuals..."):
-                raw_text = get_pdf_text(pdf_files)
-                text_chunks = get_text_chunks(raw_text)
+            with st.spinner("🚀 Pre-loading Technical Manuals..."):
+                # Use the updated functions that handle Document objects
+                documents = get_pdf_text(pdf_files)
+                text_chunks = get_text_chunks(documents)
                 get_vector_store(text_chunks)
-                st.toast("Manuals loaded automatically!", icon="✅")
+                st.toast("Manuals loaded!", icon="✅")
         else:
             st.warning("No PDFs found in the /data folder.")
 
