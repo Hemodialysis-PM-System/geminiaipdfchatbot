@@ -21,16 +21,17 @@ from langchain_core.documents import Document
 def get_pdf_text(pdf_docs):
     documents = []
     for pdf_path in pdf_docs:
-        # This gets the actual filename (e.g., Fresenius 5008 Service manual.pdf)
         file_name = os.path.basename(pdf_path) 
         pdf_reader = PdfReader(pdf_path)
         
         for i, page in enumerate(pdf_reader.pages):
             page_text = page.extract_text()
             if page_text:
-                # We save the text AND the real page number (i + 1)
+                # ADD THIS LINE: Explicitly label the digital page inside the text
+                labeled_text = f"SOURCE_FILE: {file_name} | DIGITAL_PAGE: {i + 1}\n{page_text}"
+                
                 new_doc = Document(
-                    page_content=page_text,
+                    page_content=labeled_text,
                     metadata={"source": file_name, "page": i + 1}
                 )
                 documents.append(new_doc)
@@ -78,15 +79,21 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    Answer the question as accurately as possible using the provided context.
+    You are a medical equipment expert. Use the provided context to answer the question.
     
-    CRITICAL REQUIREMENT: For every point in your answer, you MUST state the Source PDF name and the Page Number.
-    Example: "Check PT07 temperature (Source: Fresenius 5008 Service manual.pdf, Page 45)"
+    STRICT RULE FOR CITATIONS:
+    At the end of your answer, you must state the location using the following format:
+    "Source: [Filename], Digital Page: [Number]"
     
-    Context:\n {context}?\n
-    Question: \n{question}\n
-    
-    Answer (Include Source and Page):
+    DO NOT use chapter-style page numbers (like 6-6 or 4-2) found in the text. ONLY use the 'DIGITAL_PAGE' label provided in the context.
+
+    Context:
+    {context}
+
+    Question: 
+    {question}
+
+    Answer:
     """
 
     model = ChatGoogleGenerativeAI(
