@@ -85,13 +85,14 @@ def get_conversational_chain():
     CRITICAL HIERARCHY RULES:
     1. PRIMARY SOURCES: 'Fresenius 5008 Service manual.pdf' and 'PM Form_Haemodialysis Unit_FMC-5008_2025.pdf'. Use these for technical steps and maintenance.
     2. SECONDARY SOURCE: 'Fresenius 5008 User manual.pdf'. Use this ONLY for general operation or if the answer is missing from the Service Manual.
-    3. If there is a conflict, the Service Manual is ALWAYS correct.
+    3. If information is present in multiple PDFs, provide the technical details from the Service manual FIRST, then add any relevant operational tips from the User manual.    
     4. Only use the 'ACTUAL_DIGITAL_PAGE' number provided at the top of each context block.
     5. DO NOT use numbers like '6-3', '4-2', or '6-11' as page numbers. Those are chapter headers.
     6. Format your citation exactly like this: [Filename | Digital Page: X;]
 
     INSTRUCTIONS FOR CITATIONS:
     - At the end of every answer, clearly list the source file name and the Digital Page number.
+    - List every PDF that contributed to your answer.
     - Use the 'DIGITAL_PAGE' label found at the top of the context snippets.                                                                                                                  
                                                                                                                     
     Context:
@@ -124,39 +125,42 @@ def user_input(user_question):
         model="models/gemini-embedding-001",
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         task_type="retrieval_query"
-    )  # type: ignore
+    )
 
-    # 2. Load the vector database from the Streamlit /tmp/ directory
     try:
         new_db = FAISS.load_local("/tmp/faiss_index", embeddings, allow_dangerous_deserialization=True)
         
-        # --- NEW: WEIGHTED SEARCH ---
-        # We add priority terms to the search to favor the Service Manual and PM Form
-        priority_terms = "Technical Safety Check TSC Maintenance Procedure Service Manual PM Form"
-        enhanced_query = f"{priority_terms} {user_question}"
+        # SEARCH 1: Technical Bias (Focuses on Service/PM)
+        tech_query = f"TSC Technical Safety Check Maintenance Service PM Form {user_question}"
+        docs_tech = new_db.similarity_search(tech_query, k=6)
         
-        # Increased k to 10 so we capture snippets from all 3 PDFs
-        docs = new_db.similarity_search(enhanced_query, k=10) 
+        # SEARCH 2: Natural Bias (Focuses on the actual question/User Manual)
+        docs_gen = new_db.similarity_search(user_question, k=6)
+        
+        # COMBINE: Join both lists so the AI has 12 pieces of info from different sources
+        # We use a set to remove any duplicates if the same page was found twice
+        combined_docs = []
+        seen_content = set()
+        for doc in docs_tech + docs_gen:
+            if doc.page_content not in seen_content:
+                combined_docs.append(doc)
+                seen_content.add(doc.page_content)
+                
     except Exception as e:
         st.error(f"Vector Database Error: {e}")
-        return {"output_text": "System not ready. Please wait for auto-load to finish."}
+        return {"output_text": "System not ready."}
 
     chain = get_conversational_chain()
 
     try:
-        # Pass the docs and the original question to the chain
+        # Pass the combined documents (up to 12) to the AI
         response = chain(
-            {"input_documents": docs, "question": user_question}, 
+            {"input_documents": combined_docs, "question": user_question}, 
             return_only_outputs=True
         )
     except Exception as e:
-        if "429" in str(e):
-            st.warning("Rate limit hit. Retrying in 15 seconds...")
-            time.sleep(15)
-            return user_input(user_question)
-        else:
-            st.error(f"Gemini API error: {e}")
-            return {"output_text": "An error occurred."}
+        # (Keep your existing 429 error handling here)
+        return {"output_text": "An error occurred."}
 
     return response
     
