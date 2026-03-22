@@ -27,26 +27,24 @@ def get_pdf_text(pdf_docs):
         for i, page in enumerate(pdf_reader.pages):
             page_text = page.extract_text()
             if page_text:
-                # CRITICAL CHANGE: We put the Digital Page at the very top of the text
-                # This makes it impossible for the AI to miss it.
-                labeled_content = f"FILE: {file_name} | ACTUAL_DIGITAL_PAGE: {i + 1}\n{page_text}"
+                # NEW: We prefix the text with the Digital Page number.
+                # This ensures the AI sees the number 119 right next to the "Remove Lines" text.
+                labeled_text = f"SOURCE_FILE: {file_name} | DIGITAL_PAGE: {i + 1}\n{page_text}"
                 
                 new_doc = Document(
-                    page_content=labeled_content,
+                    page_content=labeled_text,
                     metadata={"source": file_name, "page": i + 1}
                 )
                 documents.append(new_doc)
     return documents
 
 
-# split text into chunks
-# Smaller chunks (500) ensure the AI knows exactly which page it is on
 def get_text_chunks(documents):
+    # Reducing chunk size to 600 helps keep citations accurate
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500, 
+        chunk_size=600, 
         chunk_overlap=50
     )
-    # Change 'split_text' to 'split_documents' to keep the metadata
     chunks = splitter.split_documents(documents)
     return chunks
 
@@ -87,8 +85,9 @@ def get_conversational_chain():
     1. PRIMARY SOURCES: 'Fresenius 5008 Service manual.pdf' and 'PM Form_Haemodialysis Unit_FMC-5008_2025.pdf'. Use these for technical steps and maintenance.
     2. SECONDARY SOURCE: 'Fresenius 5008 User manual.pdf'. Use this ONLY for general operation or if the answer is missing from the Service Manual.
     3. If information is present in multiple PDFs, provide the technical details from the Service manual FIRST, then add any relevant operational tips from the User manual.    
-    4. Only use the 'ACTUAL_DIGITAL_PAGE' number provided at the top of each context block.
-    5. DO NOT use numbers like '6-3', '4-2', or '6-11' as page numbers. Those are chapter headers.
+    4. Every time you provide an instruction, you must look at the 'DIGITAL_PAGE' label at the start of the text. 
+    DO NOT use the page numbers printed in the manual (e.g., ignore 6-36 or 4-2). 
+    Only use the absolute Digital Page number (1-328).
     6. Format your citation exactly like this: [Filename | Digital Page: X;]
 
     INSTRUCTIONS FOR CITATIONS:
