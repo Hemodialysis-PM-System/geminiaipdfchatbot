@@ -79,11 +79,11 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    You are a medical equipment expert. Use the provided context to answer the question.
+    You are a Biomedical Engineering expert troubleshooting a Fresenius 5008 Hemodialysis unit.
+    Use the provided context to answer the question.
     
     STRICT RULE FOR CITATIONS:
-    At the end of your answer, you must state the location using the following format:
-    "Source: [Filename], Digital Page: [Number]"
+    State the Source Filename and the DIGITAL_PAGE for every instruction.
     
     DO NOT use chapter-style page numbers (like 6-6 or 4-2) found in the text. ONLY use the 'DIGITAL_PAGE' label provided in the context.
 
@@ -123,7 +123,7 @@ def user_input(user_question):
     try:
         new_db = FAISS.load_local("/tmp/faiss_index", embeddings, allow_dangerous_deserialization=True)
         # Limit to 2 docs to stay within Free Tier token limits
-        docs = new_db.similarity_search(user_question, k=5)
+        docs = new_db.similarity_search(user_question, k=8)
     except Exception as e:
         st.error(f"Vector Database Error: {e}")
         return {"output_text": "Please upload and process a PDF first."}
