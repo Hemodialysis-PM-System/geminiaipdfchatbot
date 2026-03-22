@@ -40,10 +40,11 @@ def get_pdf_text(pdf_docs):
 
 
 # split text into chunks
+# Smaller chunks (500) ensure the AI knows exactly which page it is on
 def get_text_chunks(documents):
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000, 
-        chunk_overlap=100
+        chunk_size=500, 
+        chunk_overlap=50
     )
     # Change 'split_text' to 'split_documents' to keep the metadata
     chunks = splitter.split_documents(documents)
