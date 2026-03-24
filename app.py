@@ -83,11 +83,10 @@ def get_conversational_chain():
     
     CRITICAL HIERARCHY RULES:
     1. PRIMARY SOURCES: 'Fresenius 5008 Service manual.pdf' and 'PM Form_Haemodialysis Unit_FMC-5008_2025.pdf'. Use these for technical steps and maintenance.
-    2. SECONDARY SOURCE: 'Fresenius 5008 User manual.pdf'. Use this ONLY for general operation or if the answer is missing from the Service Manual.
-    3. If information is present in multiple PDFs, provide the technical details from the Service manual FIRST, then add any relevant operational tips from the User manual.    
-    4. Every time you provide an instruction, you must look at the 'DIGITAL_PAGE' label at the start of the text. 
-    DO NOT use the page numbers printed in the manual (e.g., ignore 6-36 or 4-2). 
-    Only use the absolute Digital Page number (1-328).
+    2. If information is present in both PDFs, provide all details from both PDFs.    
+    3. Every time you provide an instruction, you must look at the 'DIGITAL_PAGE' label at the start of the text. 
+    4. DO NOT use the page numbers printed in the manual (e.g., ignore 6-36 or 4-2). 
+    5/ Only use the absolute Digital Page number (1-328).
     6. Format your citation exactly like this: [Filename | Digital Page: X;]
 
     INSTRUCTIONS FOR CITATIONS:
@@ -128,39 +127,34 @@ def user_input(user_question):
     )
 
     try:
+        # 1. Load the database (which will now only contain Service Manual & PM Form)
         new_db = FAISS.load_local("/tmp/faiss_index", embeddings, allow_dangerous_deserialization=True)
         
-        # SEARCH 1: Technical Bias (Focuses on Service/PM)
-        tech_query = f"TSC Technical Safety Check Maintenance Service PM Form {user_question}"
-        docs_tech = new_db.similarity_search(tech_query, k=6)
-        
-        # SEARCH 2: Natural Bias (Focuses on the actual question/User Manual)
-        docs_gen = new_db.similarity_search(user_question, k=6)
-        
-        # COMBINE: Join both lists so the AI has 12 pieces of info from different sources
-        # We use a set to remove any duplicates if the same page was found twice
-        combined_docs = []
-        seen_content = set()
-        for doc in docs_tech + docs_gen:
-            if doc.page_content not in seen_content:
-                combined_docs.append(doc)
-                seen_content.add(doc.page_content)
+        # 2. Perform a single, deep search. 
+        # Since these are technical documents, k=10 is ideal to catch 
+        # details spread across multiple pages (e.g., the TSC checklist).
+        docs = new_db.similarity_search(user_question, k=10)
                 
     except Exception as e:
         st.error(f"Vector Database Error: {e}")
-        return {"output_text": "System not ready."}
+        return {"output_text": "System not ready. Please ensure manuals are pre-loaded."}
 
     chain = get_conversational_chain()
 
     try:
-        # Pass the combined documents (up to 12) to the AI
+        # 3. Generate the response using only the technical snippets
         response = chain(
-            {"input_documents": combined_docs, "question": user_question}, 
+            {"input_documents": docs, "question": user_question}, 
             return_only_outputs=True
         )
     except Exception as e:
-        # (Keep your existing 429 error handling here)
-        return {"output_text": "An error occurred."}
+        if "429" in str(e):
+            st.warning("Rate limit hit. Retrying in 15 seconds...")
+            time.sleep(15)
+            return user_input(user_question)
+        else:
+            st.error(f"Gemini API error: {e}")
+            return {"output_text": "An error occurred during response generation."}
 
     return response
     
