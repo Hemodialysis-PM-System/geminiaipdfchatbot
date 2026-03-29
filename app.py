@@ -40,13 +40,28 @@ def get_pdf_text(pdf_docs):
 
 
 def get_text_chunks(documents):
-    # Reducing chunk size to 600 helps keep citations accurate
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=600, 
         chunk_overlap=50
     )
-    chunks = splitter.split_documents(documents)
-    return chunks
+    
+    final_chunks = []
+    for doc in documents:
+        # Split each page individually
+        chunks = splitter.split_text(doc.page_content)
+        for chunk in chunks:
+            # Re-attach the metadata to the text content of EVERY chunk
+            # This ensures the AI sees the source/page even in the middle of a paragraph
+            source = doc.metadata.get("source", "Unknown")
+            page = doc.metadata.get("page", "Unknown")
+            
+            labeled_chunk = f"SOURCE: {source} | DIGITAL_PAGE: {page}\n{chunk}"
+            
+            final_chunks.append(Document(
+                page_content=labeled_chunk,
+                metadata=doc.metadata
+            ))
+    return final_chunks
 
 
 # get embeddings for each chunk
@@ -79,28 +94,21 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    You are a Senior Biomedical Engineer. Use the provided context to answer the troubleshooting question.
+    You are a Senior Biomedical Engineer. Answer the troubleshooting question using the provided context.
     
-    CRITICAL HIERARCHY RULES:
-    1. PRIMARY SOURCES: 'Fresenius 5008 Service manual.pdf' and 'PM Form_Haemodialysis Unit_FMC-5008_2025.pdf'. Use these for technical steps and maintenance.
-    2. If information is present in both PDFs, provide all details from both PDFs.    
-    3. Every time you provide an instruction, you must look at the 'DIGITAL_PAGE' label at the start of the text. 
-    4. DO NOT use the page numbers printed in the manual (e.g., ignore 6-36 or 4-2). 
-    5/ Only use the absolute Digital Page number (1-328).
-    6. Format your citation exactly like this: [Filename | Digital Page: X;]
-
-    INSTRUCTIONS FOR CITATIONS:
-    - At the end of every answer, clearly list the source file name and the Digital Page number.
-    - List every PDF that contributed to your answer.
-    - Use the 'DIGITAL_PAGE' label found at the top of the context snippets.                                                                                                                  
-                                                                                                                    
+    STRICT CITATION RULES:
+    1. For every instruction, look at the 'DIGITAL_PAGE' label at the top of the specific text block.
+    2. The 'DIGITAL_PAGE' is the absolute index of the PDF (1 to 168).
+    3. IGNORE all other numbers that look like pages (e.g., ignore footers like 6-36, 4-2).
+    4. Format: [Filename | Digital Page: X;]
+    
     Context:
     {context}
-
+    
     Question: 
     {question}
-
-    Answer (Include Filename and Digital Page):
+    
+    Answer:
     """
 
     model = ChatGoogleGenerativeAI(
