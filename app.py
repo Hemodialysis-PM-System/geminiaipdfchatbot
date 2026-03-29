@@ -72,8 +72,8 @@ def get_vector_store(text_chunks):
         google_api_key=st.secrets["GOOGLE_API_KEY"],
         task_type="retrieval_document"
     )
-    # Process in larger batches of 50 for much faster speed
-    batch_size = 50 
+    # make it slower but more "patient" so it doesn't crash
+    batch_size = 10
     vector_store = None
     
     for i in range(0, len(text_chunks), batch_size):
@@ -84,7 +84,7 @@ def get_vector_store(text_chunks):
             else:
                 vector_store.add_documents(batch)
             # Reduced sleep time for better speed
-            time.sleep(1) 
+            time.sleep(2) 
         except Exception as e:
             st.error(f"Quota reached. Waiting 10 seconds...")
             time.sleep(10)
@@ -141,7 +141,8 @@ def user_input(user_question):
         # 2. Perform a single, deep search. 
         # Since these are technical documents, k=10 is ideal to catch 
         # details spread across multiple pages (e.g., the TSC checklist).
-        docs = new_db.similarity_search(user_question, k=10)
+        docs = new_db.similarity_search(user_question, k=20)
+        # This tells the AI to look at 20 different parts of the manual instead of just 10
                 
     except Exception as e:
         st.error(f"Vector Database Error: {e}")
