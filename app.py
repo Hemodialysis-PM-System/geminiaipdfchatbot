@@ -180,12 +180,12 @@ def auto_ingest_data():
         pdf_files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.pdf')]
         
         if pdf_files:
-            with st.spinner("🚀 Pre-loading Technical Manuals..."):
+            with st.spinner("🚀 Pre-loading Technical Manuals..."): # Displays a message while the heavy processing happens
                 # Use the updated functions that handle Document objects
-                documents = get_pdf_text(pdf_files)
-                text_chunks = get_text_chunks(documents)
-                get_vector_store(text_chunks)
-                st.toast("Manuals loaded!", icon="✅")
+                documents = get_pdf_text(pdf_files) # Extracts raw text while preserving digital page numbers
+                text_chunks = get_text_chunks(documents) # Breaks the 500+ pages into character segments for better AI focus
+                get_vector_store(text_chunks) # Converts these segments into vectors and saves them to the local FAISS database.
+                st.toast("Manuals loaded!", icon="✅") # Shows a quick notification once the system is ready for questions
         else:
             st.warning("No PDFs found in the /data folder.")
 
