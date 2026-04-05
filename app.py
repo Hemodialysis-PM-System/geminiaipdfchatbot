@@ -139,8 +139,6 @@ def user_input(user_question):
         new_db = FAISS.load_local("/tmp/faiss_index", embeddings, allow_dangerous_deserialization=True)
         
         # 2. Perform a single, deep search. 
-        # Since these are technical documents, k=10 is ideal to catch 
-        # details spread across multiple pages (e.g., the TSC checklist).
         docs = new_db.similarity_search(user_question, k=20)
         # This tells the AI to look at 20 different parts of the manual instead of just 10
                 
