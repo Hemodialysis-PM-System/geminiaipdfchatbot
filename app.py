@@ -73,7 +73,7 @@ def get_vector_store(text_chunks):
         task_type="retrieval_document"
     )
     # make it slower but more "patient" so it doesn't crash
-    batch_size = 10
+    batch_size = 10 # sends the pages in small groups of 10
     vector_store = None
     
     for i in range(0, len(text_chunks), batch_size):
@@ -84,10 +84,10 @@ def get_vector_store(text_chunks):
             else:
                 vector_store.add_documents(batch)
             # Reduced sleep time for better speed
-            time.sleep(2) 
+            time.sleep(2) # the system wait 2 seconds between batches to avoid hitting the free-tier limit
         except Exception as e:
-            st.error(f"Quota reached. Waiting 10 seconds...")
-            time.sleep(10)
+            st.error(f"Quota reached. Waiting 10 seconds...") # displays an error message
+            time.sleep(10) # waits 10 seconds before trying again automatically
             
     vector_store.save_local("/tmp/faiss_index")
 
